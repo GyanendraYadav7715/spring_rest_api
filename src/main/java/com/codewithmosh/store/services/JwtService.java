@@ -16,24 +16,24 @@ import java.util.Date;
 public class JwtService {
 
       private final JwtConfig jwtConfig;
+    private Jwt generateToken(User user, long tokenExpiration) {
+        var claims = Jwts.claims()
+                      .subject(user.getId().toString())
+                      .add("email", user.getEmail())
+                      .add("name", user.getName())
+                      .add("role",user.getRole())
+                      .issuedAt(new Date())
+                      .expiration(new Date(System.currentTimeMillis() + 1000 * tokenExpiration))
+                      .build();
 
-    private String generateToken(User user, long tokenExpiration) {
-        return Jwts.builder()
-                .subject(user.getId().toString())
-                .claim("email", user.getEmail())
-                .claim("name", user.getName())
-                .claim("role",user.getRole())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 1000 * tokenExpiration))
-                .signWith(jwtConfig.getSecretKey())
-                .compact();
+        return  new Jwt(claims, jwtConfig.getSecretKey());
     }
 
-    public String generateAccessToken(User user){
+    public Jwt generateAccessToken(User user){
          return generateToken(user, jwtConfig.getAccessTokenExpiration());
     }
 
-    public String generateRefreshToken(User user){
+    public Jwt generateRefreshToken(User user){
          return generateToken(user, jwtConfig.getRefreshTokenExpiration());
     }
 
@@ -45,21 +45,30 @@ public class JwtService {
                 .getPayload();
     }
 
-    public boolean validateToken(String token){
+    public Jwt parseToken(String token){
         try{
             var claims = getClaims(token);
-            return claims.getExpiration().after(new Date());
-        }catch (JwtException ex){
-            return  false;
+            return new Jwt(claims, jwtConfig.getSecretKey());
+        }catch (JwtException e){
+            return null;
         }
     }
-
-    public  Long getUserIdFromToken(String token){
-
-        return Long.valueOf(getClaims(token).getSubject());
-    }
-
-    public Role  getRole(String token){
-        return Role.valueOf(getClaims(token).get("role",String.class));
-    }
+//
+//    public boolean validateToken(String token){
+//        try{
+//            var claims = getClaims(token);
+//            return claims.getExpiration().after(new Date());
+//        }catch (JwtException ex){
+//            return  false;
+//        }
+//    }
+//
+//    public  Long getUserIdFromToken(String token){
+//
+//        return Long.valueOf(getClaims(token).getSubject());
+//    }
+//
+//    public Role  getRole(String token){
+//        return Role.valueOf(getClaims(token).get("role",String.class));
+//    }
 }
