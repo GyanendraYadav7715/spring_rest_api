@@ -39,5 +39,19 @@ public class Order {
     @OneToMany(mappedBy = "order",cascade = CascadeType.PERSIST)
     private Set<OrderItem> itmes = new LinkedHashSet<>();
 
+    public static Order formCart(Cart cart,User customer){
+        var order = new Order();
 
+        order.setTotalPrice(cart.getTotalPrice());
+        order.setStatus(OrderStatus.PENDING);
+        order.setCustomer(customer);
+
+        cart.getCartItems().forEach(item-> {
+
+            var orderItems = new OrderItem(order,item.getProduct(),item.getQuantity());
+            order.itmes.add(orderItems);
+        });
+
+        return order;
+    }
 }
