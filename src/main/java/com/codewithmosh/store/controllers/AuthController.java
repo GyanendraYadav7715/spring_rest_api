@@ -29,6 +29,7 @@ public class AuthController {
     private final JwtConfig jwtConfig;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest request,
@@ -70,13 +71,10 @@ public class AuthController {
 
     @GetMapping("/me")
     public  ResponseEntity<UserDto> me(){
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        var userId= (Long)authentication.getPrincipal();
-        var user = userRepository.findById(userId).orElse(null);
-        if(user == null){
+        if(authService.getcurrentUser() == null){
            return  ResponseEntity.notFound().build();
         }
-        var userDto = userMapper.userToUserDto(user);
+        var userDto = userMapper.userToUserDto(authService.getcurrentUser());
         return ResponseEntity.ok(userDto);
     }
 

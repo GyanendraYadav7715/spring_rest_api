@@ -1,4 +1,4 @@
-package com.codewithmosh.store.dtos;
+package com.codewithmosh.store.repositories;
 
 import com.codewithmosh.store.entities.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
