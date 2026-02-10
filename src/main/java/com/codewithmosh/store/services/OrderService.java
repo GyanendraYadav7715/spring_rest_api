@@ -2,9 +2,11 @@ package com.codewithmosh.store.services;
 
 import com.codewithmosh.store.controllers.AuthService;
 import com.codewithmosh.store.dtos.OrderDto;
+import com.codewithmosh.store.exceptions.OrderNotFoundException;
 import com.codewithmosh.store.mappers.OrderMapper;
 import com.codewithmosh.store.repositories.OrderRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,5 +23,16 @@ public class OrderService {
         var user=authService.getcurrentUser();
         var order = orderRepository.getAllByCustomer(user);
         return order.stream().map(orderMapper::toDto).toList();
+    }
+    public  OrderDto getOrder(Long orderId){
+     var order = orderRepository.getOrderWithItmes(orderId).orElse(null);
+     if(order == null){
+         throw new OrderNotFoundException();
+     }
+     var user = authService.getcurrentUser();
+     if(!order.isPlacedBy(user)){
+        throw  new AccessDeniedException("You do not have access to this order");
+     }
+     return orderMapper.toDto(order);
     }
 }
