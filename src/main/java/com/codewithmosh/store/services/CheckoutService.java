@@ -14,6 +14,9 @@ import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @RequiredArgsConstructor
 @Service
@@ -27,6 +30,7 @@ public class CheckoutService {
     @Value("${websiteUrl}")
     private String websiteUrl;
 
+    @Transactional
     public CheckoutResponse checkout(CheckoutRequest request) throws StripeException {
         var cart = cartRepository.getCartWithItems(request.getCartId()).orElse(null);
         if(cart == null){
@@ -39,31 +43,41 @@ public class CheckoutService {
 
         orderRepository.save(order);
         //creating  a checkout sessions
-        var builder = SessionCreateParams.builder()
-                .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(websiteUrl+"/checkout-success?orderId="+order.getId())
-                .setCancelUrl(websiteUrl+"/checkout-cancle");
 
-        order.getItems().forEach(item->{
-            var lineItem = SessionCreateParams.LineItem.builder()
-                    .setQuantity(Long.valueOf(item.getQuantity()))
-                    .setPriceData(
-                            SessionCreateParams.LineItem.PriceData.builder()
-                                    .setCurrency("INR")
-                                    .setUnitAmountDecimal(item.getUnitPrice())
-                                    .setProductData(
-                                            SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                    .setName(item.getProduct().getName())
-                                                    .build()
-                                    ).build()
-                    ).build();
-            builder.addLineItem(lineItem);
+        try{
+            var builder = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                    .setSuccessUrl(websiteUrl+"/checkout-success?orderId="+order.getId())
+                    .setCancelUrl(websiteUrl+"/checkout-cancle");
 
-        });
+            order.getItems().forEach(item->{
+                var lineItem = SessionCreateParams.LineItem.builder()
+                        .setQuantity(Long.valueOf(item.getQuantity()))
+                        .setPriceData(
+                                SessionCreateParams.LineItem.PriceData.builder()
+                                        .setCurrency("INR")
+                                        .setUnitAmountDecimal(
+                                                item.getUnitPrice()
+                                                        .multiply(BigDecimal.valueOf(100)))
+                                        .setProductData(
+                                                SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                        .setName(item.getProduct().getName())
+                                                        .build()
+                                        ).build()
+                        ).build();
+                builder.addLineItem(lineItem);
 
-        var session = Session.create(builder.build());
+            });
 
-        cartService.clearCart(cart.getId());
-        return new CheckoutResponse(order.getId(),session.getUrl());
+            var session = Session.create(builder.build());
+
+            cartService.clearCart(cart.getId());
+            return new CheckoutResponse(order.getId(),session.getUrl());
+        }catch (StripeException ex){
+            System.out.println(ex.getMessage());
+            orderRepository.delete(order);
+            throw ex;
+
+        }
     }
 }
