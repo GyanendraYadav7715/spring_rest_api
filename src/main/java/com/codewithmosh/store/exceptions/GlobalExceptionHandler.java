@@ -1,8 +1,10 @@
 package com.codewithmosh.store.exceptions;
 
 import com.codewithmosh.store.dtos.ErrorDto;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +31,25 @@ public class GlobalExceptionHandler {
 
 
         return  ResponseEntity.badRequest().body(errors);
+    }
+
+
+
+    // 3️⃣ Handle generic exceptions
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleGeneric() {
+        return new ResponseEntity<>(
+                new ApiError("Something went wrong"),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+    // 1️⃣ Handle invalid login
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiError> handleBadCredentials() {
+        return new ResponseEntity<>(
+                new ApiError("Invalid email or password"),
+                HttpStatus.UNAUTHORIZED
+        );
     }
 
 }

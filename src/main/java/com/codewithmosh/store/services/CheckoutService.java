@@ -1,6 +1,5 @@
 package com.codewithmosh.store.services;
 
-import com.codewithmosh.store.controllers.AuthService;
 import com.codewithmosh.store.dtos.CheckoutRequest;
 import com.codewithmosh.store.dtos.CheckoutResponse;
 import com.codewithmosh.store.entities.Order;

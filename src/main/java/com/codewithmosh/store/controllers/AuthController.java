@@ -4,27 +4,31 @@ import com.codewithmosh.store.config.JwtConfig;
 import com.codewithmosh.store.dtos.JwtResponse;
 import com.codewithmosh.store.dtos.LoginRequest;
 import com.codewithmosh.store.dtos.UserDto;
+import com.codewithmosh.store.entities.RefreshToken;
 import com.codewithmosh.store.mappers.UserMapper;
+import com.codewithmosh.store.repositories.RefreshTokenRepository;
 import com.codewithmosh.store.repositories.UserRepository;
+import com.codewithmosh.store.services.AuthService;
 import com.codewithmosh.store.services.JwtService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-@AllArgsConstructor
+import java.time.Instant;
+
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    private  final AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final JwtConfig jwtConfig;
     private final UserRepository userRepository;
@@ -42,7 +46,13 @@ public class AuthController {
 
         var accessToken = jwtService.generateAccessToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
+        RefreshToken entity = new RefreshToken();
+        entity.setToken(refreshToken.toString());
+        entity.setUser(user);
+        entity.setExpiryDate(Instant.now().plusSeconds(jwtConfig.getRefreshTokenExpiration()));
+        entity.setRevoked(false);
 
+        refreshTokenRepository.save(entity);
         var cookie = new Cookie("refreshToken", refreshToken.toString());
         cookie.setHttpOnly(true);
         cookie.setPath("/auth/refresh");  // Fixed typo here
@@ -53,20 +63,16 @@ public class AuthController {
         return ResponseEntity.ok(new JwtResponse(accessToken.toString()));
     }
 
-
-
     @PostMapping("/refresh")
-    public ResponseEntity<JwtResponse> refresh(
-            @CookieValue(value="refreshToken") String refreshToken
+    public ResponseEntity<JwtResponse> refresh(@CookieValue(value="refreshToken") String refreshToken
     ){
         var jwt = jwtService.parseToken(refreshToken);
-    if(jwt == null || jwt.isExpired()){
-        return  ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-    }
-    var user = userRepository.findById(jwt.getUserId()).orElseThrow();
-    var accessToken = jwtService.generateAccessToken(user);
+        if(jwt == null || jwt.isExpired())
+          return  ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        var user = userRepository.findById(jwt.getUserId()).orElseThrow();
+        var accessToken = jwtService.generateAccessToken(user);
 
-    return ResponseEntity.ok(new JwtResponse(accessToken.toString()));
+        return ResponseEntity.ok(new JwtResponse(accessToken.toString()));
     }
 
     @GetMapping("/me")
@@ -76,10 +82,5 @@ public class AuthController {
         }
         var userDto = userMapper.userToUserDto(authService.getcurrentUser());
         return ResponseEntity.ok(userDto);
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Void> handleBadCredentialsException(){
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

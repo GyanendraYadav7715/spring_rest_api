@@ -1,4 +1,4 @@
-package com.codewithmosh.store.controllers;
+package com.codewithmosh.store.services;
 
 import com.codewithmosh.store.entities.User;
 import com.codewithmosh.store.repositories.UserRepository;
