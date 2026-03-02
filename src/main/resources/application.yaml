@@ -11,6 +11,9 @@ spring:
     secret: ${JWT_SECRET}
     accessTokenExpiration: ${ACTOKEXP}
     refreshTokenExpiration : ${RETOKEXP}
-  stripe:
+
+stripe:
     secretKey: ${STRIPE_SECRET_KEY}
     publicKey: ${STRIPE_PUBLIC_KEY}
+
+websiteUrl: http://localhost:3000
